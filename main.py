@@ -2,13 +2,13 @@ import logging import base64 import aiohttp from aiogram import Bot, Dispatcher,
 
 API_TOKEN = 'YOUR_BOT_TOKEN_HERE'
 
-Replace with your private channel IDs (must start with -100)
+#Replace with your private channel IDs (must start with -100)
 
 CHANNEL_IDS = [-1001234567890, -1009876543210] CHANNEL_LINKS = [ ('Channel 1', 'https://t.me/privatechannel1'), ('Channel 2', 'https://t.me/privatechannel2') ] ADMIN_ID = 7401896933 MAX_FREE_IMAGES = 2
 
 bot = Bot(token=API_TOKEN) dp = Dispatcher(bot)
 
-In-memory user storage
+#In-memory user storage
 
 user_images = {} user_referrals = {}
 
@@ -16,7 +16,7 @@ Inline buttons for channel join
 
 join_keyboard = InlineKeyboardMarkup(inline_keyboard=[ [InlineKeyboardButton(text=name, url=link)] for name, link in CHANNEL_LINKS ])
 
-Check membership in all required channels
+#Check membership in all required channels
 
 async def is_member(user_id): for channel_id in CHANNEL_IDS: try: member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id) if member.status not in ['member', 'administrator', 'creator']: return False except: return False return True
 
