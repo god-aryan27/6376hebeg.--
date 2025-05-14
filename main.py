@@ -1,10 +1,10 @@
 import logging import base64 import aiohttp from aiogram import Bot, Dispatcher, types from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton from aiogram.utils import executor from aiogram.filters import CommandStart from PIL import Image, ImageDraw, ImageFont import os
 
-API_TOKEN = 'YOUR_BOT_TOKEN_HERE'
+API_TOKEN = '7542705793:AAEKJhuZVXVvSli4t018aaTVVJISc73jNQA'
 
 #Replace with your private channel IDs (must start with -100)
 
-CHANNEL_IDS = [-1001234567890, -1009876543210] CHANNEL_LINKS = [ ('Channel 1', 'https://t.me/privatechannel1'), ('Channel 2', 'https://t.me/privatechannel2') ] ADMIN_ID = 7401896933 MAX_FREE_IMAGES = 2
+CHANNEL_IDS = [-1002316557460] CHANNEL_LINKS = [ ('Channel 1', 'https://t.me/privatechannel1'), ('Channel 2', 'https://t.me/privatechannel2') ] ADMIN_ID = 7401896933 MAX_FREE_IMAGES = 2
 
 bot = Bot(token=API_TOKEN) dp = Dispatcher(bot)
 
