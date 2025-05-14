@@ -1,119 +1,126 @@
 import logging
+import os
 import base64
 import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
-from aiogram.filters import CommandStart
 from PIL import Image, ImageDraw, ImageFont
-import os
 
-API_TOKEN = '7542705793:AAEKJhuZVXVvSli4t018aaTVVJISc73jNQA'  # Replace with your bot's token
-CHANNEL_IDS = [-1002316557460]  # Replace with your private channel ID(s)
+API_TOKEN = "7542705793:AAEKJhuZVXVvSli4t018aaTVVJISc73jNQA"  # replace with your bot token
+
+# === Channel Setup ===
+CHANNEL_IDS = [-1002316557460]  # replace with your private channel IDs
 CHANNEL_LINKS = [
-    ('Channel 1', 'https://t.me/+o3dYShdRAZk4MWVl'),
-    ('Channel 2', 'https://t.me/privatechannel2')  # Replace with actual channel links
+    ("Channel 1", "https://t.me/+o3dYShdRAZk4MWVl"),
+    ("Channel 2", "https://t.me/yourchannel2")
 ]
-ADMIN_ID = 7401896933  # Admin ID for notifications
-MAX_FREE_IMAGES = 2  # Limit of free Ghibli images
+
+# === Admin & Limits ===
+ADMIN_ID = 7401896933
+MAX_FREE_IMAGES = 2
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# In-memory user storage
-user_images = {}
-user_referrals = {}
+user_images = {}       # Tracks number of images used by user
+user_referrals = {}    # Tracks how many successful referrals user has
 
-# Inline buttons for channel join
-join_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text=name, url=link)] for name, link in CHANNEL_LINKS
-])
+# === Inline Join Buttons ===
+join_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[[InlineKeyboardButton(text=name, url=url)] for name, url in CHANNEL_LINKS]
+)
 
-# Check membership in all required channels
+# === Channel Membership Checker ===
 async def is_member(user_id):
     for channel_id in CHANNEL_IDS:
         try:
-            member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
+            member = await bot.get_chat_member(channel_id, user_id)
             if member.status not in ['member', 'administrator', 'creator']:
                 return False
         except:
             return False
     return True
 
-@dp.message(CommandStart())
+# === Start Command ===
+@dp.message_handler(commands=['start'])
 async def start(message: types.Message):
+    ref = message.get_args()
+    if ref.isdigit():
+        ref_id = int(ref)
+        if ref_id != message.from_user.id:
+            user_referrals[ref_id] = user_referrals.get(ref_id, 0) + 1
+            await bot.send_message(ref_id, "🎉 You got +1 extra image! Thanks to your referral.")
+            await bot.send_message(ADMIN_ID, f"New user joined via referral: {message.from_user.id}")
+
+    # Referral Link
+    bot_username = (await bot.get_me()).username
+    referral_link = f"https://t.me/{bot_username}?start={message.from_user.id}"
+    referral_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎁 Share Your Referral Link", url=referral_link)]
+    ])
+
     await message.answer(
-        "🎨 Ghibli Art Creation\n\nSend me a photo, and I'll transform it into a Ghibli-style masterpiece for you.\n\nUpload your photo below to start the transformation:"
+        "🎨 *Ghibli Art Creation*\n\nSend me a photo, and I'll transform it into a Ghibli-style masterpiece for you. ✨\n\nUpload your photo below to start:",
+        parse_mode="Markdown",
+        reply_markup=referral_keyboard
     )
 
-@dp.message(lambda message: message.photo)
+# === Handle Photo Upload ===
+@dp.message_handler(content_types=types.ContentType.PHOTO)
 async def handle_photo(message: types.Message):
     user_id = message.from_user.id
 
-    # Check if user has joined the channel
     if not await is_member(user_id):
         await message.answer("❌ You must join our channels to use this bot!", reply_markup=join_keyboard)
         return
 
-    # Check the number of images the user has generated
-    count = user_images.get(user_id, 0) + user_referrals.get(user_id, 0)
-    if count >= MAX_FREE_IMAGES:
-        await message.answer("⚠️ You've used your 2 free conversions. Refer friends to unlock more! Each referral = 1 more image.")
+    used = user_images.get(user_id, 0)
+    bonus = user_referrals.get(user_id, 0)
+
+    if used >= MAX_FREE_IMAGES + bonus:
+        await message.answer("⛔ You’ve reached your limit! Invite friends to unlock more images.")
         return
 
-    # Download the photo sent by the user
-    file_info = await bot.get_file(message.photo[-1].file_id)
-    file_path = file_info.file_path
-    file_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file_path}"
+    file = await bot.get_file(message.photo[-1].file_id)
+    photo_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file.file_path}"
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(file_url) as resp:
-            photo_data = await resp.read()
+        async with session.get(photo_url) as resp:
+            img_data = await resp.read()
 
-        # Send to external Ghibli API
-        data = aiohttp.FormData()
-        data.add_field('image', photo_data, filename='photo.jpg', content_type='image/jpeg')
+        form = aiohttp.FormData()
+        form.add_field("image", img_data, filename="photo.jpg", content_type="image/jpeg")
 
-        async with session.post('https://ghibli.kesug.com/?i=1', data=data) as api_resp:
+        async with session.post("https://ghibli.kesug.com/?i=1", data=form) as api_resp:
             res = await api_resp.json()
-            image_base64 = res.get('image_base64')
-            if not image_base64:
-                await message.answer("Something went wrong. Try again later.")
+            base64_img = res.get("image_base64")
+
+            if not base64_img:
+                await message.answer("❌ Failed to generate image. Try again later.")
                 return
 
-            # Save image
-            with open("ghibli_image.png", "wb") as f:
-                f.write(base64.b64decode(image_base64))
+            with open("ghibli.png", "wb") as f:
+                f.write(base64.b64decode(base64_img))
 
-    # Add watermark
+    # === Add Watermark ===
     try:
-        img = Image.open("ghibli_image.png")
+        img = Image.open("ghibli.png")
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("arial.ttf", 36) if os.path.exists("arial.ttf") else ImageFont.load_default()
         text = "@AryanXGhiblibot"
         text_width, text_height = draw.textsize(text, font=font)
-        x = img.width - text_width - 10
-        y = img.height - text_height - 10
+        x = img.width - text_width - 20
+        y = img.height - text_height - 20
         draw.text((x, y), text, fill=(255, 255, 255), font=font)
-        img.save("ghibli_image.png")
+        img.save("ghibli.png")
     except Exception as e:
-        print("Watermarking failed:", e)
+        print(f"Watermark error: {e}")
 
-    await message.answer_photo(photo=types.FSInputFile("ghibli_image.png"), caption="Here's your Ghibli-style art!")
-    user_images[user_id] = user_images.get(user_id, 0) + 1
+    user_images[user_id] = used + 1
+    await message.answer_photo(types.FSInputFile("ghibli.png"), caption="Here’s your Ghibli-style art!")
 
-@dp.message()
-async def referral_check(message: types.Message):
-    if message.text.startswith('/ref '):
-        try:
-            ref_id = int(message.text.split()[1])
-            if ref_id != message.from_user.id:
-                user_referrals[ref_id] = user_referrals.get(ref_id, 0) + 1
-                await bot.send_message(ref_id, f"🎉 You received 1 extra Ghibli image credit! Total: {user_referrals[ref_id]}")
-                await bot.send_message(ADMIN_ID, f"New user joined: @{message.from_user.username or message.from_user.first_name} (ID: {message.from_user.id})")
-        except:
-            pass
-
+# === Launch Bot ===
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     executor.start_polling(dp, skip_updates=True)
