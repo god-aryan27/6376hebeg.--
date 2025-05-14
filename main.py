@@ -4,7 +4,7 @@ API_TOKEN = '7542705793:AAEKJhuZVXVvSli4t018aaTVVJISc73jNQA'
 
 #Replace with your private channel IDs (must start with -100)
 
-CHANNEL_IDS = [-1002316557460] CHANNEL_LINKS = [ ('Channel 1', 'https://t.me/privatechannel1'), ('Channel 2', 'https://t.me/privatechannel2') ] ADMIN_ID = 7401896933 MAX_FREE_IMAGES = 2
+CHANNEL_IDS = [-1002316557460] CHANNEL_LINKS = [ ('Channel 1', 'https://t.me/+o3dYShdRAZk4MWVl'), ('Channel 2', 'https://t.me/privatechannel2') ] ADMIN_ID = 7401896933 MAX_FREE_IMAGES = 2
 
 bot = Bot(token=API_TOKEN) dp = Dispatcher(bot)
 
