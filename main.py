@@ -1,4 +1,12 @@
-import logging import base64 import aiohttp from aiogram import Bot, Dispatcher, types from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton from aiogram.utils import executor from aiogram.filters import CommandStart from PIL import Image, ImageDraw, ImageFont import os
+import logging
+import base64
+import aiohttp
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import executor
+from aiogram.filters import CommandStart
+from PIL import Image, ImageDraw, ImageFont
+import os
 
 API_TOKEN = '7542705793:AAEKJhuZVXVvSli4t018aaTVVJISc73jNQA'
 
